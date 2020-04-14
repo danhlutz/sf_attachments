@@ -23,13 +23,13 @@ def make_connection(sandbox: str):
         domain='test')
 
 
-def attachment_body(parent_id, connection):
+def attachment_bodies(parent_id, connection):
     ''' get the url to the attachment's body'''
     qr_str = (
         f"SELECT Id, Body, Name FROM Attachment "
         f"WHERE ParentId = '{parent_id}'"
     )
-    return connection.query(qr_str)["records"][0]
+    return connection.query(qr_str)["records"]
 
 
 def get_attachment(body, connection):
@@ -44,12 +44,13 @@ def get_attachment(body, connection):
 
 def save_attachment(parent_id, name, connection):
     ''' get and save the attachment '''
-    body = attachment_body(parent_id, connection)
-    attachment = get_attachment(body, connection)
-    old_filename = body["Name"]
-    filename = f"{RESULTS}{name}-{old_filename}"
-    with open(filename, "wb") as f:
-        f.write(attachment.content)
+    bodies = attachment_bodies(parent_id, connection)
+    for body in bodies:
+        attachment = get_attachment(body, connection)
+        old_filename = body["Name"]
+        filename = f"{RESULTS}{name}-{old_filename}"
+        with open(filename, "wb") as f:
+            f.write(attachment.content)
 
 
 def download_attachments(connection):
