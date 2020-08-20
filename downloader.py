@@ -49,6 +49,7 @@ def save_attachment(parent_id, name, connection):
         attachment = get_attachment(body, connection)
         old_filename = body["Name"]
         filename = f"{RESULTS}{name}-{old_filename}"
+        print(f"-> Downloading {old_filename}")
         with open(filename, "wb") as f:
             f.write(attachment.content)
 
@@ -57,6 +58,7 @@ def download_attachments(connection):
     ''' download attachments from csv file '''
     with open("to_download.csv", "r") as f:
         to_download = list(csv.DictReader(f))
+    print(f"Preparing to download {len(to_download)} files")
     for row in to_download:
         parent_id = row["id"]
         name = row["name"]
