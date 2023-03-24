@@ -5,16 +5,14 @@ import csv, os
 import requests
 from simple_salesforce import Salesforce
 
-RESULTS = "results/"
-
 
 def make_connection(sandbox: str):
     ''' make a connection '''
     if sandbox == 'PRODUCTION':
         return Salesforce(
             username=os.environ.get("PRODUCTION_USER"),
-            password=os.environ.get("PRODUCTION_PW"),
-            security_token=os.environ.get("PRODUCTION_TOKEN")
+            password=os.environ.get("SF_PRODUCTION_PW"),
+            security_token=os.environ.get("SF_PRODUCTION_TOKEN")
         )
     return Salesforce(
         username=os.environ.get("SANDBOX_USER"),
@@ -42,29 +40,40 @@ def get_attachment(body, connection):
     )
 
 
-def save_attachment(parent_id, name, connection):
+def save_attachment(parent_id, name, connection, output):
     ''' get and save the attachment '''
     bodies = attachment_bodies(parent_id, connection)
     for body in bodies:
         attachment = get_attachment(body, connection)
         old_filename = body["Name"]
-        filename = f"{RESULTS}{name}-{old_filename}"
+        filename = f"{output}/{name}-{old_filename}"
         print(f"-> Downloading {old_filename}")
         with open(filename, "wb") as f:
             f.write(attachment.content)
 
 
-def download_attachments(connection):
+def download_attachments(connection, input_file, output_dir,
+                         id_column, name_column):
     ''' download attachments from csv file '''
-    with open("to_download.csv", "r") as f:
+    with open(input_file, "r") as f:
         to_download = list(csv.DictReader(f))
     print(f"Preparing to download {len(to_download)} files")
     for row in to_download:
-        parent_id = row["id"]
-        name = row["name"]
-        save_attachment(parent_id, name, connection)
+        parent_id = row[id_column]
+        name = row[name_column]
+        save_attachment(parent_id, name, connection, output_dir)
+
+
+def get_col_names(input_file):
+    with open(input_file, "r") as f:
+        to_figure_out = list(csv.DictReader(f))
+    first_key, second_key, *_ = to_figure_out[0].keys()
+    return first_key.strip(), second_key.strip()
 
 
 if __name__ == "__main__":
     connection = make_connection("PRODUCTION")
-    download_attachments(connection)
+    INPUT = input("What's the name of your file? ")
+    OUTPUT = input("What directory should I save this in? ")
+    NAME_COL, ID_COL = get_col_names(INPUT)
+    download_attachments(connection, INPUT, OUTPUT, ID_COL, NAME_COL)
