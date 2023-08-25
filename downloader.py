@@ -1,6 +1,8 @@
 ''' download salesforce attachments '''
 
-import csv, os
+import argparse
+import csv
+import os
 
 import requests
 from simple_salesforce import Salesforce
@@ -70,10 +72,36 @@ def get_col_names(input_file):
     first_key, second_key, *_ = to_figure_out[0].keys()
     return first_key.strip(), second_key.strip()
 
+# CLI
+PARSER = argparse.ArgumentParser(description="download salesforce attachments")
+
+PARSER.add_argument("-f", "--filename",
+                    help="filename for when not in interactive mode",
+                    required=False)
+PARSER.add_argument("-d", "--directory",
+                    help="output directory",
+                    required=False)
+
+def set_input(args):
+    ''' set input argument'''
+    if args.filename:
+        return args.filename
+    filename = input("What's the name of your file? ")
+    return filename
+
+
+def set_output(args):
+    ''' set output directory '''
+    if args.directory:
+        return args.directory
+    output = input("What directory should I save this in? ")
+    return output
+
 
 if __name__ == "__main__":
     connection = make_connection("PRODUCTION")
-    INPUT = input("What's the name of your file? ")
-    OUTPUT = input("What directory should I save this in? ")
+    ARGS = PARSER.parse_args()
+    INPUT = set_input(ARGS)
+    OUTPUT = set_output(ARGS)
     NAME_COL, ID_COL = get_col_names(INPUT)
     download_attachments(connection, INPUT, OUTPUT, ID_COL, NAME_COL)
