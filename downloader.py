@@ -25,16 +25,27 @@ def make_connection(sandbox: str):
 
 def attachment_bodies(parent_id, connection):
     ''' get the url to the attachment's body'''
-    qr_str = (
-        f"SELECT Id, Body, Name FROM Attachment "
-        f"WHERE ParentId = '{parent_id}'"
-    )
-    return connection.query(qr_str)["records"]
+    first_query =(
+        "SELECT ContentDocumentId FROM ContentDocumentLink "
+        f"WHERE LinkedEntityId = '{parent_id}'")
+    first_result = connection.query(first_query)["records"]
+    if first_result:
+        first_result_id = first_result[0]["ContentDocumentId"]
+        qr_str = (
+            #f"SELECT Id, Body, Name FROM Attachment "
+            #f"WHERE ParentId = '{parent_id}'"
+            "SELECT Id, LatestPublishedVersionID, "
+            "LatestPublishedVersion.VersionData, "
+            "LatestPublishedVersion.Title "
+            "FROM ContentDocument "
+            f"WHERE Id = '{first_result_id}'"
+        )
+        return connection.query(qr_str)["records"]
 
 
 def get_attachment(body, connection):
     ''' get the attachment download'''
-    body_url = body["Body"]
+    body_url = body['LatestPublishedVersion']["VersionData"]
     return requests.get(
         f"https://{connection.sf_instance}{body_url}",
         headers = {"Content-Type": "application/json" ,
@@ -47,7 +58,7 @@ def save_attachment(parent_id, name, connection, output):
     bodies = attachment_bodies(parent_id, connection)
     for body in bodies:
         attachment = get_attachment(body, connection)
-        old_filename = body["Name"]
+        old_filename = body["LatestPublishedVersion"]["Title"]
         filename = f"{output}/{name}-{old_filename}"
         print(f"-> Downloading {old_filename}")
         with open(filename, "wb") as f:
