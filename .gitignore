@@ -4,3 +4,4 @@ results/*
 .DS_Store
 *.sh
 results*
+output/*
