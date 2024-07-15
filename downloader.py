@@ -4,6 +4,8 @@ import argparse
 import csv
 import os
 
+import maya
+
 import requests
 from simple_salesforce import Salesforce
 
@@ -29,18 +31,21 @@ def attachment_bodies(parent_id, connection):
         "SELECT ContentDocumentId FROM ContentDocumentLink "
         f"WHERE LinkedEntityId = '{parent_id}'")
     first_result = connection.query(first_query)["records"]
-    if first_result:
-        first_result_id = first_result[0]["ContentDocumentId"]
+    final = []
+    for result in first_result:
+        first_result_id = result["ContentDocumentId"]
         qr_str = (
             #f"SELECT Id, Body, Name FROM Attachment "
             #f"WHERE ParentId = '{parent_id}'"
             "SELECT Id, LatestPublishedVersionID, "
             "LatestPublishedVersion.VersionData, "
-            "LatestPublishedVersion.Title "
+            "LatestPublishedVersion.Title, "
+            "LatestPublishedVersion.FileExtension "
             "FROM ContentDocument "
             f"WHERE Id = '{first_result_id}'"
         )
-        return connection.query(qr_str)["records"]
+        final += connection.query(qr_str)["records"]
+    return final
 
 
 def get_attachment(body, connection):
@@ -53,14 +58,22 @@ def get_attachment(body, connection):
     )
 
 
-def save_attachment(parent_id, name, connection, output):
+def mk_filename(name, date, body, output):
+    ''' make filename for attachment'''
+    old_filename = body["LatestPublishedVersion"]["Title"]
+    extension = body["LatestPublishedVersion"]["FileExtension"]
+    return f"{output}/{date}-{name}-{old_filename}.{extension}"
+
+
+def save_attachment(parent_id, name, date, connection, output):
     ''' get and save the attachment '''
     bodies = attachment_bodies(parent_id, connection)
     for body in bodies:
         attachment = get_attachment(body, connection)
-        old_filename = body["LatestPublishedVersion"]["Title"]
-        filename = f"{output}/{name}-{old_filename}"
-        print(f"-> Downloading {old_filename}")
+        #old_filename = body["LatestPublishedVersion"]["Title"]
+        #filename = f"{output}/{date}-{name}-{old_filename}"
+        filename = mk_filename(name, date, body, output)
+        print(f"-> Downloading {filename}")
         with open(filename, "wb") as f:
             f.write(attachment.content)
 
@@ -74,7 +87,8 @@ def download_attachments(connection, input_file, output_dir,
     for row in to_download:
         parent_id = row[id_column]
         name = row[name_column]
-        save_attachment(parent_id, name, connection, output_dir)
+        date = maya.when(row["Date Filed"]).iso8601()[:10]
+        save_attachment(parent_id, name, date, connection, output_dir)
 
 
 def get_col_names(input_file):
