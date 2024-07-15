@@ -8,6 +8,8 @@ import maya
 
 import requests
 from simple_salesforce import Salesforce
+from PIL import Image
+from PyPDF2 import PdfMerger
 
 
 def make_connection(sandbox: str):
@@ -97,6 +99,40 @@ def get_col_names(input_file):
     first_key, second_key, *_ = to_figure_out[0].keys()
     return first_key.strip(), second_key.strip()
 
+
+# merge PDFs
+def merge_pdfs(orig_filename, output):
+    ''' merge pdfs into single document '''
+    convert_images(output)
+    merger = PdfMerger(strict=False)
+    files = os.listdir(output)
+    files.sort()
+    for file in files:
+        if file.endswith(".pdf"):
+            input = open(os.path.join(output, file), "rb")
+            merger.append(input)
+    filename = f"{output}/{orig_filename.split('.')[0]}-combined.pdf"
+    merger.write(filename)
+    merger.close()
+
+
+def convert_images(output):
+    files = os.listdir(output)
+    for file in files:
+        if is_image(file):
+            print(f"converting {file}")
+            img = Image.open(f"{output}/{file}")
+            filename = f"{output}/{file.split('.')[0]}.pdf"
+            print(f"new filename {filename}")
+            img.save(filename, "PDF")
+
+
+def is_image(filename):
+    lower_filename = filename.lower()
+    return lower_filename[-3:] in ['jpg', 'png'] or lower_filename[-4:] in ['jpeg', 'heic']
+
+
+
 # CLI
 PARSER = argparse.ArgumentParser(description="download salesforce attachments")
 
@@ -130,3 +166,5 @@ if __name__ == "__main__":
     OUTPUT = set_output(ARGS)
     NAME_COL, ID_COL = get_col_names(INPUT)
     download_attachments(connection, INPUT, OUTPUT, ID_COL, NAME_COL)
+
+    merge_pdfs(INPUT, OUTPUT)
