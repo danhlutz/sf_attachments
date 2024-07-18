@@ -89,8 +89,19 @@ def download_attachments(connection, input_file, output_dir,
     for row in to_download:
         parent_id = row[id_column]
         name = row[name_column]
-        date = maya.when(row["Date Filed"]).iso8601()[:10]
+        date = set_date(row)
         save_attachment(parent_id, name, date, connection, output_dir)
+
+
+def set_date(row):
+    ''' sets date for file download, or defaults to today'''
+    possible_date = row["Date Filed"]
+    if possible_date:
+        return maya.when(possible_date).iso8601()[:10]
+    if "Created Date" in row and row["Created Date"]:
+        return maya.when(row["Created Date"]).iso8601()[:10]
+    return maya.now().iso8601()[:10]
+
 
 
 def get_col_names(input_file):
