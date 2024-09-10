@@ -116,11 +116,11 @@ def merge_pdfs(orig_filename, output):
     ''' merge pdfs into single document '''
     convert_images(output)
     merger = PdfMerger(strict=False)
-    files = os.listdir(output)
+    files = os.listdir(f"{output}/originals")
     files.sort()
     for file in files:
         if file.endswith(".pdf"):
-            input = open(os.path.join(output, file), "rb")
+            input = open(os.path.join(f"{output}/originals", file), "rb")
             merger.append(input)
     filename = f"{output}/{orig_filename.split('.')[0]}-combined.pdf"
     merger.write(filename)
@@ -175,7 +175,8 @@ if __name__ == "__main__":
     ARGS = PARSER.parse_args()
     INPUT = set_input(ARGS)
     OUTPUT = set_output(ARGS)
+    os.makedirs(f"{OUTPUT}/originals")
     NAME_COL, ID_COL = get_col_names(INPUT)
-    download_attachments(connection, INPUT, OUTPUT, ID_COL, NAME_COL)
+    download_attachments(connection, INPUT, f"{OUTPUT}/originals", ID_COL, NAME_COL)
 
     merge_pdfs(INPUT, OUTPUT)
